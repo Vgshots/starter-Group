@@ -1,164 +1,10 @@
 //database.js
 const sqlite3 = require("sqlite3");
-const {
-  getRandomRemWarning,
-  getRandomBeforeDrName,
-  getRandomgBeforeClassRoom,
-  getRandomundelastInfo,
-  getRandomInformationPhrase,
-  getRandomSemString,
-  getRandomAllsectionss,
-  getRandomNotAVlINK,
-  getRandomundefinedCase,
-} = require("./random");
-//  FORMAT :-
-function convert24To12(time24) {
-  const timePattern = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/; // HH:mm
-  if (!timePattern.test(time24)) {
-    return "UnkKnownDay";
-  }
 
-  const [hours, minutes] = time24.split(":").map(Number);
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-    throw new Error("Invalid time. Hours should be between 0 and 23, and minutes between 0 and 59.");
-  }
 
-  const determinePeriod = hours => hours >= 12 ? "PM" : "AM";
 
-  const convertTo12HourFormat = (hours, minutes) => {
-    const period = determinePeriod(hours);
-    const hours12 = hours % 12 || 12;
-    return `${hours12}:${minutes.toString().padStart(2, "0")}${period}`;
-  };
 
-  if (hours === 0 || hours === 12) {
-    return `${hours === 0 ? 12 : hours}:${minutes.toString().padStart(2, "0")} ${hours < 12 ? 'AM' : 'PM'}`;
-  }
 
-  return convertTo12HourFormat(hours, minutes);
-}
-
-function formatData(courseCode, data) {
-  const GroupsInformationFor = getRandomInformationPhrase();
-  const SemesterYear = getRandomSemString();
-  const Allsectionss = getRandomAllsectionss();
-  const NotAVlINK = getRandomNotAVlINK();
-  const undefinedCase = getRandomundefinedCase();
-  const RemWarning = getRandomRemWarning();
-  const infoLatMesage = getRandomundelastInfo();
-
-  let formattedOutput = ""; // Initialize as empty string
-  let bool = false;
-
-  for (const entry of data) {
-    if (entry.day !== "Colages") {
-      if (entry.sectionNumber < 1) {
-        formattedOutput = ` ${GroupsInformationFor} ${entry.courseCode}\n`;
-        const sem = parseInt(entry.semester) === 1 ? "First Semester" : parseInt(entry.semester) === 2 ? "Second Semester" : parseInt(entry.semester) === 3 ? "Summary Semester" : "Unknown Semester";
-        formattedOutput += `${SemesterYear} ${sem} ${entry.year}/${parseInt(entry.year) + 1}\n`;
-        bool = true;
-      }
-
-      formattedOutput += entry.sectionNumber === 0 ? `\n ${Allsectionss} \n` : `\nSection #${entry.sectionNumber}\n`;
-      formattedOutput += entry.GroupLink ? `${entry.GroupLink}\n` : `${NotAVlINK}${courseCode} ${entry.sectionNumber} LINK\n`;
-    } else {
-      if (entry.sectionNumber < 1) {
-        formattedOutput = ` Details List for ${entry.courseCode}\n`;
-        const sem = { 1: "First Semester", 2: "Second Semester", 3: "Summary Semester" }[parseInt(entry.semester)] || "Unknown Semester";
-        formattedOutput += `${SemesterYear} ${sem} ${entry.year}/${parseInt(entry.year) + 1}\n`;
-        bool = true;
-      }
-
-      formattedOutput += entry.sectionNumber === 0 ? `\n General Colage group for this semester \n` : `\nmajor #${entry.FinalExamDate}\n`;
-      formattedOutput += entry.GroupLink ? `${entry.GroupLink}\n` : `${NotAVlINK}${courseCode} ${entry.sectionNumber} LINK\n`;
-    }
-  }
-
-  if (!bool) {
-    formattedOutput += `\n\n ${undefinedCase}  `;
-  }
-
-  if (bool) {
-    formattedOutput += `\n\n ${RemWarning} \n\n`;
-    formattedOutput += "\n" + infoLatMesage;
-  }
-
-  return formattedOutput;
-}
-
-function formatDataforCourseInformation(courseCode, data, withFilter = true) {
-  if (data.some((entry) => entry.day && entry.day.includes("Colages"))) {
-    // Example usage
-    return Promise.resolve(ReadAllGroupLinks(courseCode))
-      .then((result) => result)
-      .catch((error) => error);
-  }
-
-  let formattedOutput = "📚  Course Information\n";
-  let Finals = "";
-  let sem = "";
-  let infoLasters = getRandomundelastInfo();
-
-  // Set Finals and sem from data
-  for (const entry of data) {
-    Finals = entry.FinalExamDate || "";
-    sem = { 1: "First Semester", 2: "Second Semester", 3: "Summary Semester" }[parseInt(entry.semester)] || "Unknown Semester";
-    break;
-  }
-
-  formattedOutput += `Course Code: ${courseCode}\n`;
-  formattedOutput += `🕒  Final Exam Timing: ${Finals}\n`;
-
-  // Include sem and year inside the loop
-  for (const entry of data) {
-    formattedOutput += `${getRandomSemString()} ${sem} ${entry.year}/${parseInt(entry.year) + 1}\n`;
-    break; // Break after the first iteration as sem and year are common for all entries
-  }
-
-  if (withFilter) {
-    const groupedSessions = {};
-
-    // Group sessions
-    for (const entry of data) {
-      const key = `${entry.instructor}-${entry.classType}-${entry.startTime}-${entry.endTime}-${entry.room}`;
-      groupedSessions[key] = groupedSessions[key] || { instructor: entry.instructor, classType: entry.classType, days: [], startTime: entry.startTime, endTime: entry.endTime, totalTimeInMinutes: entry.totalTimeInMinutes, room: entry.room, sectionNumber: entry.sectionNumber, position: entry.position };
-      groupedSessions[key].days.push(entry.day);
-    }
-
-    let sessionNumber = 1;
-
-    // Format grouped sessions
-    for (const key in groupedSessions) {
-      const groupedSession = groupedSessions[key];
-      if (groupedSession.position == 1) {
-        formattedOutput += `\n📅  Session ${groupedSession.sectionNumber}:\n`;
-        formattedOutput += `  ${getRandomBeforeDrName()} ${groupedSession.instructor}\n\n`;
-      }
-
-      formattedOutput += `  📅  Days: ${groupedSession.days.join(", ")}\n`;
-      formattedOutput += `  ⏰  Time: ${convert24To12(groupedSession.startTime)}-${convert24To12(groupedSession.endTime)}\n`;
-      formattedOutput += `  Total time: ${groupedSession.totalTimeInMinutes} minutes\n`;
-      formattedOutput += `  🎓  Class Type: ${groupedSession.classType}\n`;
-      formattedOutput += `  ${getRandomgBeforeClassRoom()} ${groupedSession.room}\n\n`;
-
-      sessionNumber++;
-    }
-  } else {
-    // Format individual sessions
-    for (const entry of data) {
-      formattedOutput += `\n📅  Session #${entry.sectionNumber}:\n`;
-      formattedOutput += `  👨‍🏫  Instructor: ${entry.instructor}\n`;
-      formattedOutput += `  📅  Days: ${entry.day}\n`;
-      formattedOutput += `  ⏰  Time: ${entry.startTime}-${entry.endTime}\n`;
-      formattedOutput += `  Total time: ${entry.totalTimeInMinutes} minutes\n`;
-      formattedOutput += `  🎓  Class Type: ${entry.classType}\n`;
-      formattedOutput += `  🏫  Lecture Room: ${entry.room}  ${entry.startTime}-${entry.endTime}\n`;
-    }
-  }
-
-  formattedOutput += "\n" + infoLasters;
-  return formattedOutput;
-}
 
 // --------------------------------------------------------------------------------------
 
@@ -257,66 +103,12 @@ exports.checkIfCourseExists = async (courseCode) => {
   });
 };
 
-// NEVER USED!
-async function fetchExistingSections(courseCode, YER, SMS) {
-  const db = new sqlite3.Database("./databases/courseDatabase.db");
-  return new Promise((resolve, reject) => {
-    const getExistingSectionsQuery =
-      "SELECT DISTINCT sectionNumber FROM courses WHERE courseCode = ? AND year = ? AND semester = ?;";
-    db.all(getExistingSectionsQuery, [courseCode, YER, SMS], (err, rows) => {
-      if (err) {
-        lastInfo;
-        reject(err);
-      } else {
-        resolve(rows.map((row) => row.sectionNumber));
-      }
-    });
-    db.close();
-  });
-}
 
 
 
 
 
 
-
-async function checkIfExists(courseInfo) {
-  const db = new sqlite3.Database("./databases/courseDatabase.db");
-
-  const existCheckQuery = `
-    SELECT 1 FROM courses
-    WHERE courseCode = ? AND sectionNumber = ? AND position = ? AND year = ? AND semester = ?
-  `;
-
-  const values = [
-    courseInfo.courseCode,
-    parseInt(courseInfo.sectionNumber),
-    courseInfo.position,
-    courseInfo.year,
-    courseInfo.semester
-  ];
-
-  try {
-    const row = await new Promise((resolve, reject) => {
-      db.get(existCheckQuery, values, (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(row !== undefined);
-        }
-      });
-    });
-
-    db.close();
-
-    return row;
-  } catch (error) {
-    console.error("Error checking if data exists:", error);
-    db.close();
-    return false;
-  }
-}
 
 
 
